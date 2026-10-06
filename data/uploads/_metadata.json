@@ -1,0 +1,48 @@
+[
+  {
+    "id": "file_1791197497293_jib1z",
+    "name": "architecture_notes.md",
+    "size": 245,
+    "type": "text/markdown",
+    "extension": "md",
+    "url": "/api/files/file_1791197497293_jib1z/download",
+    "uploadedAt": 1791197497293,
+    "status": "ready",
+    "textContent": "# System Architecture\n\n- Unified Model Gateway\n- Streaming SSE API\n- Multimodal Document Analysis\n"
+  },
+  {
+    "id": "file_1791197497320_r2hsy",
+    "name": "ai_generated_1791197497320.svg",
+    "size": 1033,
+    "type": "image/svg+xml",
+    "extension": "svg",
+    "url": "/api/files/file_1791197497320_r2hsy/download",
+    "previewUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgwIiBoZWlnaHQ9IjcyMCIgdmlld0JveD0iMCAwIDEyODAgNzIwIj4KICAgICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMwZjE3MmEiIC8+CiAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjUwJSIgc3RvcC1jb2xvcj0iIzFlMWI0YiIgLz4KICAgICAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzMxMmU4MSIgLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICA8L2RlZnM+CiAgICAgIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZCkiIC8+CiAgICAgIDxjaXJjbGUgY3g9IjY0MCIgY3k9IjMwMi40IiByPSIyMDEuNjAwMDAwMDAwMDAwMDIiIGZpbGw9IiM4MThjZjgiIG9wYWNpdHk9IjAuMzUiIGZpbHRlcj0iYmx1cig1MHB4KSIgLz4KICAgICAgPHJlY3QgeD0iMTI4IiB5PSI1MTguNCIgd2lkdGg9IjEwMjQiIGhlaWdodD0iMiIgZmlsbD0iIzQzMzhjYSIgb3BhY2l0eT0iMC42IiAvPgogICAgICA8dGV4dCB4PSI1MCUiIHk9IjQ1JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZmZmZiIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSI0NHB4Ij5DeWJlcnB1bmsgZmxvYXRpbmcgaXNsYW5kIHdpdGggbmVvbiB3YXRlcmZhbGw8L3RleHQ+CiAgICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTQlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTRhM2I4IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjIzcHgiPkdlbmVyYXRlZCB3aXRoIEFJIFdvcmtzcGFjZSDigKIgRGlnaXRhbCBjb25jZXB0IGFydDwvdGV4dD4KICAgIDwvc3ZnPg==",
+    "uploadedAt": 1791197497321,
+    "status": "ready",
+    "isGenerated": true
+  },
+  {
+    "id": "file_1791252059312_51uw8",
+    "name": "dataset_summary.csv",
+    "size": 512,
+    "type": "text/csv",
+    "extension": "csv",
+    "url": "/api/files/file_1791252059312_51uw8/download",
+    "uploadedAt": 1791252059312,
+    "status": "ready",
+    "textContent": "id,product,revenue\n1,AI Assistant,150000\n2,Model Gateway,85000\n"
+  },
+  {
+    "id": "file_1791252059328_zha7d",
+    "name": "ai_generated_1791252059328.svg",
+    "size": 1034,
+    "type": "image/svg+xml",
+    "extension": "svg",
+    "url": "/api/files/file_1791252059328_zha7d/download",
+    "previewUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgwIiBoZWlnaHQ9IjcyMCIgdmlld0JveD0iMCAwIDEyODAgNzIwIj4KICAgICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMwZjE3MmEiIC8+CiAgICAgICAgICA8c3RvcCBvZmZzZXQ9IjUwJSIgc3RvcC1jb2xvcj0iIzFlMWI0YiIgLz4KICAgICAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzMxMmU4MSIgLz4KICAgICAgICA8L2xpbmVhckdyYWRpZW50PgogICAgICA8L2RlZnM+CiAgICAgIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JhZCkiIC8+CiAgICAgIDxjaXJjbGUgY3g9IjY0MCIgY3k9IjMwMi40IiByPSIyMDEuNjAwMDAwMDAwMDAwMDIiIGZpbGw9IiM4MThjZjgiIG9wYWNpdHk9IjAuMzUiIGZpbHRlcj0iYmx1cig1MHB4KSIgLz4KICAgICAgPHJlY3QgeD0iMTI4IiB5PSI1MTguNCIgd2lkdGg9IjEwMjQiIGhlaWdodD0iMiIgZmlsbD0iIzQzMzhjYSIgb3BhY2l0eT0iMC42IiAvPgogICAgICA8dGV4dCB4PSI1MCUiIHk9IjQ1JSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZmZmZiIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjcwMCIgZm9udC1zaXplPSI0NHB4Ij5DbGVhbiBtb2Rlcm4gQUkgYXNzaXN0YW50IHdvcmtzcGFjZSBVSSB3aXRoIGc8L3RleHQ+CiAgICAgIDx0ZXh0IHg9IjUwJSIgeT0iNTQlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTRhM2I4IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjIzcHgiPkdlbmVyYXRlZCB3aXRoIEFJIFdvcmtzcGFjZSDigKIgTWluaW1hbGlzdCAzRCBSZW5kZXI8L3RleHQ+CiAgICA8L3N2Zz4=",
+    "uploadedAt": 1791252059328,
+    "status": "ready",
+    "isGenerated": true
+  }
+]

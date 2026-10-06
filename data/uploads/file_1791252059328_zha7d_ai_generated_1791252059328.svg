@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a" />
+          <stop offset="50%" stop-color="#1e1b4b" />
+          <stop offset="100%" stop-color="#312e81" />
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grad)" />
+      <circle cx="640" cy="302.4" r="201.60000000000002" fill="#818cf8" opacity="0.35" filter="blur(50px)" />
+      <rect x="128" y="518.4" width="1024" height="2" fill="#4338ca" opacity="0.6" />
+      <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="44px">Clean modern AI assistant workspace UI with g</text>
+      <text x="50%" y="54%" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="23px">Generated with AI Workspace • Minimalist 3D Render</text>
+    </svg>

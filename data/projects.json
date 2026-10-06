@@ -1,0 +1,32 @@
+[
+  {
+    "id": "proj_default",
+    "title": "General Workspace",
+    "description": "Default multi-turn assistant workspace for reasoning, coding, and file analysis.",
+    "createdAt": 1791197486508,
+    "updatedAt": 1791197486508,
+    "systemInstruction": "You are an intelligent, helpful, and versatile AI assistant. Answer accurately with code blocks, math formatting, and structured insights.",
+    "conversationIds": [],
+    "fileIds": []
+  },
+  {
+    "id": "proj_1791197497307",
+    "title": "Full-Stack Assistant Project",
+    "description": "Test project workspace",
+    "systemInstruction": "",
+    "createdAt": 1791197497307,
+    "updatedAt": 1791197497307,
+    "conversationIds": [],
+    "fileIds": []
+  },
+  {
+    "id": "proj_1791252059319",
+    "title": "Analytics Workspace",
+    "description": "Data analysis and structured reporting workspace",
+    "systemInstruction": "You are an expert Data Scientist. Format results as Markdown tables.",
+    "createdAt": 1791252059319,
+    "updatedAt": 1791252059319,
+    "conversationIds": [],
+    "fileIds": []
+  }
+]

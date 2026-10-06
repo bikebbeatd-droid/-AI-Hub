@@ -1,0 +1,6 @@
+{
+  "name": "CineFlow AI - Professional Video Editor",
+  "description": "AI-first professional video editor with natural-language editing, multi-track timeline, intelligent media analysis, verified edit plans, real-time preview, and export rendering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
