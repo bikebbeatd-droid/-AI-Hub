@@ -36,13 +36,9 @@ export class ModelStore {
         const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
         const data = JSON.parse(raw);
         if (Array.isArray(data.models)) {
-          for (const m of data.models) {
-            this.models.set(m.id, m);
-          }
+          for (const m of data.models) this.models.set(m.id, m);
         }
-        if (data.status) {
-          this.syncStatus = data.status;
-        }
+        if (data.status) this.syncStatus = data.status;
       }
     } catch (e) {
       console.warn('Could not load model cache from disk:', e);
@@ -51,11 +47,14 @@ export class ModelStore {
 
   private saveToCache() {
     try {
-      const data = {
-        models: Array.from(this.models.values()),
-        status: this.syncStatus
-      };
-      fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      fs.writeFileSync(
+        CACHE_FILE,
+        JSON.stringify({
+          models: Array.from(this.models.values()),
+          status: this.syncStatus
+        }, null, 2),
+        'utf-8'
+      );
     } catch (e) {
       console.warn('Failed to save model cache:', e);
     }
@@ -103,42 +102,55 @@ export class ModelStore {
     this.syncStatus.isSyncing = true;
     this.syncStatus.error = null;
 
-    try {
-      const openrouterKey = keys?.openrouter || process.env.OPENROUTER_API_KEY;
-      const nvidiaKey = keys?.nvidia || process.env.NVIDIA_API_KEY;
+    const openrouterKey = keys?.openrouter || process.env.OPENROUTER_API_KEY;
+    const nvidiaKey = keys?.nvidia || process.env.NVIDIA_API_KEY;
 
-      const [orModels, nvModels, gemModels] = await Promise.all([
-        this.openrouterAdapter.listModels(openrouterKey),
-        this.nvidiaAdapter.listModels(nvidiaKey),
-        this.geminiAdapter.listModels()
-      ]);
+    const results = await Promise.allSettled([
+      this.openrouterAdapter.listModels(openrouterKey),
+      this.nvidiaAdapter.listModels(nvidiaKey),
+      this.geminiAdapter.listModels()
+    ]);
 
-      const newMap = new Map<string, ModelInfo>();
+    const errors: string[] = [];
+    const successfulModels: ModelInfo[] = [];
 
-      for (const m of [...orModels, ...nvModels, ...gemModels]) {
-        newMap.set(m.id, m);
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        successfulModels.push(...result.value);
+      } else {
+        const provider = index === 0 ? 'OpenRouter' : index === 1 ? 'NVIDIA NIM' : 'Gemini';
+        errors.push(provider + ': ' + (result.reason?.message || 'catalog sync failed'));
       }
+    });
 
-      this.models = newMap;
+    // Only replace models for providers whose catalog request succeeded.
+    // This prevents a temporary outage from wiping a previously healthy catalog.
+    const successfulProviders = new Set(
+      results
+        .map((result, index) => result.status === 'fulfilled' ? (index === 0 ? 'openrouter' : index === 1 ? 'nvidia' : 'gemini') : null)
+        .filter(Boolean)
+    );
 
-      const all = Array.from(this.models.values());
-      const glmCount = all.filter(m => m.isGlm).length;
-      const freeCount = all.filter(m => m.isFree).length;
-
-      this.syncStatus = {
-        lastSynced: new Date().toISOString(),
-        isSyncing: false,
-        totalModels: all.length,
-        glmModelsCount: glmCount,
-        freeModelsCount: freeCount
-      };
-
-      this.saveToCache();
-      return this.syncStatus;
-    } catch (err: any) {
-      this.syncStatus.isSyncing = false;
-      this.syncStatus.error = err.message || 'Synchronization failed';
-      throw err;
+    if (successfulProviders.size > 0) {
+      for (const provider of successfulProviders) {
+        for (const [id, model] of this.models) {
+          if (model.provider === provider) this.models.delete(id);
+        }
+      }
+      for (const model of successfulModels) this.models.set(model.id, model);
     }
+
+    const all = Array.from(this.models.values());
+    this.syncStatus = {
+      lastSynced: new Date().toISOString(),
+      isSyncing: false,
+      totalModels: all.length,
+      glmModelsCount: all.filter(m => m.isGlm).length,
+      freeModelsCount: all.filter(m => m.isFree).length,
+      error: errors.length ? errors.join(' | ') : null
+    };
+
+    this.saveToCache();
+    return this.syncStatus;
   }
 }
