@@ -122,12 +122,21 @@ export class OpenRouterAdapter implements ProviderAdapter {
                              lowerId.includes('5v') || 
                              lowerName.includes('vision');
 
+      const supportsImageOutput = (modalities[1] && modalities[1].includes('image')) ||
+                                 lowerId.includes('imagen') ||
+                                 lowerId.includes('dall-e') ||
+                                 lowerId.includes('flux') ||
+                                 lowerId.includes('sdxl') ||
+                                 lowerId.includes('stable-diffusion') ||
+                                 lowerName.includes('image generator');
+
       const tags: string[] = [];
       if (isGlm) tags.push('GLM');
       if (isFree) tags.push('Free');
       if (supportsCoding) tags.push('Coding');
       if (supportsReasoning) tags.push('Reasoning');
       if (supportsVision) tags.push('Vision');
+      if (supportsImageOutput) tags.push('Image Output');
 
       return {
         id, // EXACT IMMUTABLE PROVIDER ID
@@ -149,6 +158,7 @@ export class OpenRouterAdapter implements ProviderAdapter {
         supportsTools: Boolean(m.supported_parameters?.includes('tools')),
         supportsStreaming: true,
         supportsCoding,
+        supportsImageOutput,
         status: 'available',
         lastSynced: now,
         tags,

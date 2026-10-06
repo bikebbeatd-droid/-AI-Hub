@@ -32,6 +32,10 @@ export interface ModelInfo {
   supportsTools: boolean;
   supportsStreaming: boolean;
   supportsCoding: boolean;
+  supportsImageOutput?: boolean;
+  supportsAudioInput?: boolean;
+  supportsAudioOutput?: boolean;
+  supportsLiveAudio?: boolean;
   status: 'available' | 'degraded' | 'offline';
   lastSynced: string;
   tags?: string[];
@@ -46,7 +50,10 @@ export type NavigationTab =
   | 'history' 
   | 'settings' 
   | 'models' 
-  | 'favorites';
+  | 'favorites'
+  | 'assistants'
+  | 'prompts'
+  | 'artifacts';
 
 export type GenerationState = 
   | 'idle' 
@@ -55,7 +62,57 @@ export type GenerationState =
   | 'analyzing_file' 
   | 'reading_image' 
   | 'creating_file' 
-  | 'generating_image';
+  | 'generating_image'
+  | 'searching_web'
+  | 'deep_researching'
+  | 'listening'
+  | 'transcribing'
+  | 'speaking';
+
+export interface SearchCitation {
+  title: string;
+  url: string;
+  snippet?: string;
+  sourceName?: string;
+}
+
+export interface CustomAssistant {
+  id: string;
+  name: string;
+  description: string;
+  avatar: string;
+  systemInstruction: string;
+  preferredModelId?: string;
+  preferredProvider?: ProviderType;
+  tools?: string[];
+  category: string;
+  createdAt: number;
+}
+
+export interface MemoryItem {
+  id: string;
+  text: string;
+  createdAt: number;
+  category?: 'preference' | 'fact' | 'instruction';
+}
+
+export interface PromptTemplate {
+  id: string;
+  title: string;
+  prompt: string;
+  category: 'Coding' | 'Writing' | 'Research' | 'Study' | 'Business' | 'Analysis' | 'Image' | 'Productivity';
+  tags: string[];
+}
+
+export interface ArtifactItem {
+  id: string;
+  title: string;
+  type: 'code' | 'html' | 'markdown' | 'json' | 'table' | 'svg';
+  content: string;
+  language?: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export interface ChatAttachment {
   id: string;
@@ -136,6 +193,7 @@ export interface ChatMessage {
   reasoningContent?: string;
   attachments?: ChatAttachment[];
   reactions?: Record<string, boolean>;
+  citations?: SearchCitation[];
   ensembleResponses?: EnsembleComparison[];
   isError?: boolean;
   errorDetails?: ChatMessageErrorDetails;
@@ -153,11 +211,15 @@ export interface Conversation {
   updatedAt: number;
   mode: ModelMode;
   selectedModelId?: string;
+  selectedModelIds?: string[]; // Multiple models simultaneously selected
   selectedProvider?: ProviderType;
   projectId?: string;
+  assistantId?: string;
   systemInstruction?: string;
   isEnsembleMode?: boolean;
-  ensembleModelIds?: string[];
+  isPinned?: boolean;
+  isArchived?: boolean;
+  sharedUrl?: string;
   messages: ChatMessage[];
 }
 
@@ -225,10 +287,12 @@ export interface ChatRequestPayload {
   }[];
   mode: ModelMode;
   modelId?: string;
+  modelIds?: string[];
   provider?: ProviderType;
   temperature?: number;
   maxTokens?: number;
   systemInstruction?: string;
+  webSearchEnabled?: boolean;
   keys?: {
     openrouter?: string;
     nvidia?: string;

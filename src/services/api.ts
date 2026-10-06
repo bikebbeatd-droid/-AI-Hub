@@ -188,6 +188,30 @@ export async function deleteFile(id: string): Promise<{ success: boolean }> {
   return res.json();
 }
 
+export async function deleteAllFiles(): Promise<{ success: boolean; count: number }> {
+  const res = await fetch('/api/files', {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to delete all files');
+  return res.json();
+}
+
+export async function cleanupOrphanFiles(): Promise<{ success: boolean; result: any }> {
+  const res = await fetch('/api/files/cleanup', {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to cleanup orphan files');
+  return res.json();
+}
+
+export async function clearAllPrivacyData(): Promise<{ success: boolean; clearedFilesCount: number }> {
+  const res = await fetch('/api/privacy/clear-all', {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to clear privacy data on server');
+  return res.json();
+}
+
 export async function analyzeFile(fileId: string): Promise<{ summary: string }> {
   const res = await fetch('/api/files/analyze', {
     method: 'POST',
@@ -254,6 +278,34 @@ export async function generateImage(params: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Image generation failed');
+  }
+  return res.json();
+}
+
+// ================= AUDIO API CLIENT =================
+
+export async function transcribeAudio(audioBase64: string, mimeType?: string): Promise<{ success: boolean; text: string }> {
+  const res = await fetch('/api/audio/transcribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audioBase64, mimeType })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Speech transcription failed');
+  }
+  return res.json();
+}
+
+export async function generateSpeech(text: string, voice?: string): Promise<{ success: boolean; audioBase64: string; mimeType: string }> {
+  const res = await fetch('/api/audio/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Text-to-speech generation failed');
   }
   return res.json();
 }

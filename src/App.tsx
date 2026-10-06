@@ -10,6 +10,9 @@ import { ModelsView } from './components/ModelsView.tsx';
 import { FavoritesView } from './components/FavoritesView.tsx';
 import { HistoryView } from './components/HistoryView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
+import { AssistantsView } from './components/AssistantsView.tsx';
+import { PromptsView } from './components/PromptsView.tsx';
+import { ArtifactsView } from './components/ArtifactsView.tsx';
 import { ModelSelectorModal } from './components/ModelSelectorModal.tsx';
 import { ModelTestModal } from './components/ModelTestModal.tsx';
 
@@ -17,16 +20,19 @@ const AppContent: React.FC = () => {
   const { activeTab } = useHub();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased font-sans select-none">
+    <div className="flex h-[100dvh] w-full max-w-full overflow-hidden bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 antialiased font-sans select-none">
       {/* Sidebar Navigation */}
       <Sidebar />
 
       {/* Main View Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden select-text">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col h-full overflow-hidden select-text">
         <Header />
 
-        <main className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+        <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
           {activeTab === 'chat' && <ChatView />}
+          {activeTab === 'assistants' && <AssistantsView />}
+          {activeTab === 'prompts' && <PromptsView />}
+          {activeTab === 'artifacts' && <ArtifactsView />}
           {activeTab === 'files' && <FilesView />}
           {activeTab === 'tools' && <AIToolsView />}
           {activeTab === 'projects' && <ProjectsView />}

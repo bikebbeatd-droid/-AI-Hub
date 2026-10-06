@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useHub } from '../context/HubContext.tsx';
 import { ProviderType } from '../types/index.ts';
+import * as api from '../services/api.ts';
 
 type SettingsTab = 
   | 'general' 
@@ -610,19 +611,19 @@ export const SettingsView: React.FC = () => {
             </div>
           )}
 
-          {/* PRIVACY */}
+          {/* PRIVACY & DATA CONTROL */}
           {activeTab === 'privacy' && (
             <div className="space-y-5">
               <div>
                 <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Privacy &amp; Data Control</h2>
-                <p className="text-xs text-neutral-500">Export chat history or erase cached browser memory.</p>
+                <p className="text-xs text-neutral-500">Manage data persistence, file storage lifecycle, and workspace memory.</p>
               </div>
 
               <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-semibold text-neutral-900 dark:text-white">Save History in Local Storage</div>
-                    <div className="text-[11px] text-neutral-500">Persist conversations in local browser memory.</div>
+                    <div className="text-[11px] text-neutral-500">Persist conversations across browser reloads.</div>
                   </div>
                   <input 
                     type="checkbox"
@@ -634,8 +635,8 @@ export const SettingsView: React.FC = () => {
 
                 <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-semibold text-neutral-900 dark:text-white">Export Workspace Data</div>
-                    <div className="text-[11px] text-neutral-500">Download conversations, settings, and file records as JSON.</div>
+                    <div className="text-xs font-semibold text-neutral-900 dark:text-white">Export Workspace Backup</div>
+                    <div className="text-[11px] text-neutral-500">Download conversation history, file metadata, and settings as JSON.</div>
                   </div>
                   <button
                     onClick={handleExportData}
@@ -648,8 +649,51 @@ export const SettingsView: React.FC = () => {
 
                 <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
                   <div>
+                    <div className="text-xs font-semibold text-neutral-900 dark:text-white">Clean Orphan Files &amp; Metadata</div>
+                    <div className="text-[11px] text-neutral-500">Scan disk storage for unindexed files and repair file store metadata.</div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.cleanupOrphanFiles();
+                        alert(`Cleanup complete: Repaired ${res.result.cleanedMetadata} metadata entries and ${res.result.cleanedDiskFiles} orphan disk files.`);
+                      } catch (e: any) {
+                        alert(e.message || 'Cleanup failed');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-medium cursor-pointer shadow-xs"
+                  >
+                    Cleanup Storage
+                  </button>
+                </div>
+
+                <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-red-600">Delete All Workspace Files</div>
+                    <div className="text-[11px] text-neutral-500">Permanently remove all uploaded &amp; generated files from server disk.</div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to permanently delete all stored workspace files from disk?')) {
+                        try {
+                          const res = await api.deleteAllFiles();
+                          alert(`Successfully deleted ${res.count} workspace files.`);
+                          window.location.reload();
+                        } catch (e: any) {
+                          alert(e.message || 'File deletion failed');
+                        }
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 hover:bg-red-100 border border-red-200 dark:border-red-900 text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    Delete All Files
+                  </button>
+                </div>
+
+                <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+                  <div>
                     <div className="text-xs font-semibold text-red-600">Clear All Chat History</div>
-                    <div className="text-[11px] text-neutral-500">Permanently delete all conversations from browser storage.</div>
+                    <div className="text-[11px] text-neutral-500">Permanently delete all conversation transcripts from browser storage.</div>
                   </div>
                   <button
                     onClick={() => {
@@ -659,7 +703,31 @@ export const SettingsView: React.FC = () => {
                     }}
                     className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer shadow-xs"
                   >
-                    Clear All
+                    Clear Chat History
+                  </button>
+                </div>
+
+                <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-red-600 font-bold">Reset Workspace &amp; Clear Everything</div>
+                    <div className="text-[11px] text-neutral-500">Clear all local storage, files, settings, and cached data.</div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('WARNING: This will permanently wipe all chat history, stored files, and settings. Proceed?')) {
+                        try {
+                          await api.clearAllPrivacyData();
+                          localStorage.clear();
+                          alert('Workspace reset complete.');
+                          window.location.reload();
+                        } catch (e: any) {
+                          alert(e.message || 'Reset failed');
+                        }
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs font-bold cursor-pointer shadow-xs"
+                  >
+                    Reset Everything
                   </button>
                 </div>
               </div>

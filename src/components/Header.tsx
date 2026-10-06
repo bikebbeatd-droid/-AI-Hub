@@ -68,10 +68,10 @@ export const Header: React.FC = () => {
   return (
     <header className="h-14 border-b border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md px-3 md:px-5 flex items-center justify-between sticky top-0 z-20">
       {/* Mobile Hamburger & Brand */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="md:hidden p-1.5 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          className="md:hidden p-1.5 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           <Menu className="w-5 h-5" />
@@ -79,20 +79,20 @@ export const Header: React.FC = () => {
 
         <button 
           onClick={() => setActiveTab('chat')} 
-          className="text-left font-bold text-base md:text-lg tracking-tight text-neutral-900 dark:text-white flex items-center gap-2 group cursor-pointer"
+          className="text-left font-bold text-sm sm:text-base md:text-lg tracking-tight text-neutral-900 dark:text-white flex items-center gap-1.5 group cursor-pointer"
         >
-          <span className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-mono shadow-xs font-extrabold">
+          <span className="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-mono shadow-xs font-extrabold shrink-0">
             AI
           </span>
-          <span>AI Hub</span>
+          <span className="hidden xs:inline sm:inline font-bold">AI Hub</span>
         </button>
       </div>
 
       {/* Model & Mode Selector Trigger */}
-      <div className="flex items-center">
+      <div className="flex items-center min-w-0 px-1">
         <button
           onClick={() => setIsModelSelectorOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-800 dark:text-neutral-200 shadow-xs cursor-pointer group max-w-[200px] sm:max-w-xs md:max-w-sm"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700/80 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all text-neutral-800 dark:text-neutral-200 shadow-xs cursor-pointer group max-w-[110px] min-[360px]:max-w-[150px] sm:max-w-xs md:max-w-sm truncate"
           aria-label="Select AI Model or Mode"
         >
           <div className="shrink-0">

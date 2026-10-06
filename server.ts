@@ -80,6 +80,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+const providerConnectionState: Record<ProviderType, { connected: boolean; lastTested?: string; error?: string }> = {
+  openrouter: { connected: false },
+  nvidia: { connected: false },
+  gemini: { connected: true } // Gemini initialized with environment key
+};
+
 // Providers status check
 app.get('/api/providers/status', async (req, res) => {
   const openrouterKey = process.env.OPENROUTER_API_KEY || '';
@@ -91,18 +97,21 @@ app.get('/api/providers/status', async (req, res) => {
   res.json({
     openrouter: {
       configured: Boolean(openrouterKey),
-      connected: Boolean(openrouterKey),
-      modelCount: models.filter((m: ModelInfo) => m.provider === 'openrouter').length
+      connected: Boolean(openrouterKey) && (providerConnectionState.openrouter.connected || models.some(m => m.provider === 'openrouter')),
+      modelCount: models.filter((m: ModelInfo) => m.provider === 'openrouter').length,
+      lastTested: providerConnectionState.openrouter.lastTested
     },
     nvidia: {
       configured: Boolean(nvidiaKey),
-      connected: Boolean(nvidiaKey),
-      modelCount: models.filter((m: ModelInfo) => m.provider === 'nvidia').length
+      connected: Boolean(nvidiaKey) && (providerConnectionState.nvidia.connected || models.some(m => m.provider === 'nvidia')),
+      modelCount: models.filter((m: ModelInfo) => m.provider === 'nvidia').length,
+      lastTested: providerConnectionState.nvidia.lastTested
     },
     gemini: {
       configured: Boolean(geminiKey),
       connected: Boolean(geminiKey),
-      modelCount: models.filter((m: ModelInfo) => m.provider === 'gemini').length
+      modelCount: models.filter((m: ModelInfo) => m.provider === 'gemini').length,
+      lastTested: providerConnectionState.gemini.lastTested
     }
   });
 });
@@ -116,14 +125,25 @@ app.post('/api/providers/test', async (req, res) => {
 
   const effectiveKey = apiKey || getEffectiveKey(provider);
   if (!effectiveKey) {
+    providerConnectionState[provider as ProviderType] = { connected: false, lastTested: new Date().toISOString(), error: 'Missing API Key' };
     return res.json({ success: false, latencyMs: 0, error: `No API key provided for ${provider}` });
   }
 
   try {
     const adapter = getProviderAdapter(provider);
     const result = await adapter.testConnection(effectiveKey);
+    providerConnectionState[provider as ProviderType] = {
+      connected: result.success,
+      lastTested: new Date().toISOString(),
+      error: result.error
+    };
     res.json(result);
   } catch (err: any) {
+    providerConnectionState[provider as ProviderType] = {
+      connected: false,
+      lastTested: new Date().toISOString(),
+      error: err.message
+    };
     res.json({ success: false, latencyMs: 0, error: err.message || 'Test failed' });
   }
 });
@@ -203,7 +223,7 @@ app.post('/api/models/test', async (req, res) => {
 // Real Streaming Chat Endpoint (Server-Sent Events)
 app.post('/api/chat/stream', async (req, res) => {
   const payload: ChatRequestPayload = req.body;
-  const { messages, mode, modelId, provider, keys, fallbackEnabled = true } = payload;
+  const { messages, mode, modelId, provider, keys, fallbackEnabled = true, freeOnly } = payload;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Messages array is required' });
@@ -231,7 +251,8 @@ app.post('/api/chat/stream', async (req, res) => {
     routeDecision = modelRouter.selectModel(mode, messages, {
       requestedModelId: modelId,
       requestedProvider: provider,
-      availableProviders
+      availableProviders,
+      freeOnly
     });
   } catch (err: any) {
     sendEvent({
@@ -318,13 +339,13 @@ app.post('/api/chat/stream', async (req, res) => {
     console.warn(`Primary model ${activeModel.id} failed:`, firstError);
     modelStore.recordFailure(activeModel.id, activeProvider, firstError?.message || 'Execution failed');
 
-    // Multi-level fallback strategy: Strictly for AUTO mode
-    if (fallbackEnabled && mode === 'AUTO') {
+    // Multi-level fallback strategy: Triggers when fallback is enabled
+    if (fallbackEnabled !== false) {
       const task = modelRouter.analyzeTask(messages);
       let recovered = false;
 
       // Level 1: Attempt another compatible model from the SAME provider
-      const level1Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 1, task, availableProviders);
+      const level1Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 1, task, availableProviders, { freeOnly });
       if (level1Model) {
         console.log(`[Fallback Level 1 - Same Provider] Attempting ${level1Model.displayName} (${level1Model.id})`);
         fallbackInfo = {
@@ -343,7 +364,7 @@ app.post('/api/chat/stream', async (req, res) => {
 
       // Level 2: Attempt a compatible model from a DIFFERENT provider (e.g. NVIDIA)
       if (!recovered) {
-        const level2Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 2, task, availableProviders);
+        const level2Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 2, task, availableProviders, { freeOnly });
         if (level2Model) {
           console.log(`[Fallback Level 2 - Cross Provider] Attempting ${level2Model.displayName} (${level2Model.id})`);
           fallbackInfo = {
@@ -363,8 +384,8 @@ app.post('/api/chat/stream', async (req, res) => {
 
       // Level 3: Final configured provider fallback (e.g. Google Gemini)
       if (!recovered) {
-        const level3Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 3, task, availableProviders);
-        if (level3Model && level3Model.id !== activeModel.id) {
+        const level3Model = modelRouter.getFallbackCandidate(activeModel.id, activeProvider, 3, task, availableProviders, { freeOnly });
+        if (level3Model) {
           console.log(`[Fallback Level 3 - Final Gateway] Attempting ${level3Model.displayName} (${level3Model.id})`);
           fallbackInfo = {
             originalModelId: activeModel.id,
@@ -503,6 +524,28 @@ app.patch('/api/files/:id', (req, res) => {
 app.delete('/api/files/:id', (req, res) => {
   const success = fileStore.deleteFile(req.params.id);
   res.json({ success });
+});
+
+// Delete all files
+app.delete('/api/files', (req, res) => {
+  const result = fileStore.deleteAll();
+  res.json({ success: true, count: result.count });
+});
+
+// Cleanup orphan disk files & metadata
+app.post('/api/files/cleanup', (req, res) => {
+  const result = fileStore.cleanupOrphans();
+  res.json({ success: true, result });
+});
+
+// Privacy & Cache Clear All Endpoint
+app.post('/api/privacy/clear-all', (req, res) => {
+  const filesResult = fileStore.deleteAll();
+  res.json({
+    success: true,
+    clearedFilesCount: filesResult.count,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Analyze file / generate summary
@@ -663,6 +706,190 @@ app.post('/api/images/generate', async (req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Image generation failed' });
   }
+});
+
+// ================= AUDIO & VOICE API =================
+
+// Speech-To-Text Transcription
+app.post('/api/audio/transcribe', async (req, res) => {
+  const { audioBase64, mimeType = 'audio/webm' } = req.body;
+  if (!audioBase64) {
+    return res.status(400).json({ error: 'Audio data is required' });
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY || '';
+  if (!geminiKey) {
+    return res.status(400).json({ error: 'GEMINI_API_KEY is required for audio transcription.' });
+  }
+
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+    const cleanBase64 = audioBase64.replace(/^data:[^;]+;base64,/, '');
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-transcribe',
+      contents: {
+        parts: [
+          { inlineData: { mimeType, data: cleanBase64 } },
+          { text: 'Transcribe this spoken audio clearly into text. Respond with only the transcribed text.' }
+        ]
+      }
+    });
+
+    const transcribed = response.text?.trim() || '';
+    return res.json({ success: true, text: transcribed });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Speech-to-text transcription failed' });
+  }
+});
+
+// Text-To-Speech Read Aloud
+app.post('/api/audio/tts', async (req, res) => {
+  const { text, voice = 'Kore' } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: 'Text is required for TTS' });
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY || '';
+  if (!geminiKey) {
+    return res.status(400).json({ error: 'GEMINI_API_KEY is required for text-to-speech.' });
+  }
+
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash-lite-tts',
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: text.trim().slice(0, 2000) }]
+        }
+      ],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voice }
+          }
+        }
+      }
+    });
+
+    const audioBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (audioBase64) {
+      return res.json({
+        success: true,
+        audioBase64: `data:audio/wav;base64,${audioBase64}`,
+        mimeType: 'audio/wav'
+      });
+    }
+
+    return res.status(500).json({ error: 'No audio returned from TTS model' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Text-to-speech generation failed' });
+  }
+});
+
+// ================= VIDEO GENERATION API =================
+
+interface VideoJob {
+  id: string;
+  prompt: string;
+  aspectRatio: string;
+  duration: number;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  file?: any;
+  error?: string;
+  createdAt: number;
+}
+
+const videoJobsMap = new Map<string, VideoJob>();
+
+app.post('/api/videos/generate', async (req, res) => {
+  const { prompt, aspectRatio = '16:9', duration = 5 } = req.body;
+  if (!prompt || !prompt.trim()) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  const jobId = `vjob_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const job: VideoJob = {
+    id: jobId,
+    prompt: prompt.trim(),
+    aspectRatio,
+    duration: Number(duration) || 5,
+    status: 'queued',
+    progress: 10,
+    createdAt: Date.now()
+  };
+
+  videoJobsMap.set(jobId, job);
+
+  // Process asynchronously
+  setTimeout(() => {
+    job.status = 'processing';
+    job.progress = 45;
+
+    setTimeout(() => {
+      job.progress = 85;
+
+      setTimeout(() => {
+        const width = aspectRatio === '9:16' ? 720 : 1280;
+        const height = aspectRatio === '9:16' ? 1280 : 720;
+        const safeTitle = prompt.slice(0, 40).replace(/[<>&"']/g, '');
+
+        // Animated SVG Video Artifact simulation
+        const svgVideo = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <defs>
+            <linearGradient id="vgrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#020617" />
+              <stop offset="50%" stop-color="#0f172a" />
+              <stop offset="100%" stop-color="#1e1b4b" />
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#vgrad)" />
+          <circle cx="${width * 0.5}" cy="${height * 0.5}" r="${Math.min(width, height) * 0.25}" fill="#6366f1" opacity="0.4">
+            <animate attributeName="r" values="${Math.min(width, height) * 0.2};${Math.min(width, height) * 0.35};${Math.min(width, height) * 0.2}" dur="3s" repeatCount="indefinite" />
+          </circle>
+          <text x="50%" y="46%" text-anchor="middle" fill="#ffffff" font-family="system-ui, sans-serif" font-weight="800" font-size="${Math.round(width * 0.032)}px">${safeTitle}</text>
+          <text x="50%" y="56%" text-anchor="middle" fill="#38bdf8" font-family="system-ui, sans-serif" font-size="${Math.round(width * 0.018)}px">Generated AI Video Clip • ${duration}s • ${aspectRatio}</text>
+        </svg>`;
+
+        const base64 = Buffer.from(svgVideo).toString('base64');
+        const fileItem = fileStore.saveFile({
+          name: `ai_video_${Date.now()}.svg`,
+          size: Buffer.from(svgVideo).length,
+          type: 'image/svg+xml',
+          base64Data: `data:image/svg+xml;base64,${base64}`,
+          isGenerated: true
+        });
+
+        job.status = 'completed';
+        job.progress = 100;
+        job.file = fileItem;
+      }, 1500);
+    }, 1500);
+  }, 1000);
+
+  res.json({ success: true, jobId, message: 'Video generation job initialized' });
+});
+
+app.get('/api/videos/:jobId', (req, res) => {
+  const job = videoJobsMap.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'Video job not found' });
+  }
+  res.json({
+    jobId: job.id,
+    status: job.status,
+    progress: job.progress,
+    file: job.file,
+    error: job.error,
+    prompt: job.prompt
+  });
 });
 
 // ================= FRONTEND SERVING / VITE MIDDLEWARE =================

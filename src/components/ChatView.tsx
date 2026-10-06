@@ -34,7 +34,11 @@ import {
   Lightbulb,
   Download,
   Layers,
-  Cpu
+  Cpu,
+  Globe,
+  Pin,
+  Archive,
+  Share2
 } from 'lucide-react';
 import { useHub } from '../context/HubContext.tsx';
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
@@ -74,6 +78,12 @@ export const ChatView: React.FC = () => {
     composerRef,
     isEnsembleMode,
     setIsEnsembleMode,
+    isWebSearchEnabled,
+    setIsWebSearchEnabled,
+    togglePinConversation,
+    toggleArchiveConversation,
+    duplicateConversation,
+    shareConversation,
     settings
   } = useHub();
 
@@ -86,6 +96,7 @@ export const ChatView: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showToolsPicker, setShowToolsPicker] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -296,8 +307,44 @@ export const ChatView: React.FC = () => {
           </button>
         </div>
 
-        {/* Right Utility: Export Menu */}
-        <div className="relative">
+        {/* Right Utility: Pin, Duplicate, Share & Export */}
+        <div className="flex items-center gap-1.5 relative">
+          {activeConversation && (
+            <>
+              <button
+                onClick={() => togglePinConversation(activeConversation.id)}
+                className={`p-1.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                  activeConversation.isPinned
+                    ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-600'
+                    : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                }`}
+                title={activeConversation.isPinned ? 'Unpin Chat' : 'Pin Chat'}
+              >
+                <Pin className="w-3.5 h-3.5 fill-current" />
+              </button>
+
+              <button
+                onClick={() => duplicateConversation(activeConversation.id)}
+                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white text-xs cursor-pointer"
+                title="Duplicate Conversation"
+              >
+                <Layers className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => {
+                  const url = shareConversation(activeConversation.id);
+                  navigator.clipboard.writeText(url);
+                  alert(`Share link copied: ${url}`);
+                }}
+                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white text-xs cursor-pointer"
+                title="Share Conversation"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 cursor-pointer shadow-xs"
@@ -338,34 +385,85 @@ export const ChatView: React.FC = () => {
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-12 py-4 space-y-6">
         {messages.length === 0 ? (
-          /* Empty State */
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto py-12 px-4 space-y-6">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
-              <Sparkles className="w-6 h-6" />
+          /* Modern AI Assistant Landing State */
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto py-8 sm:py-12 px-3 space-y-6">
+            <div className="w-14 h-14 rounded-2xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs ring-1 ring-blue-500/20">
+              <Sparkles className="w-7 h-7" />
             </div>
 
             <div>
-              <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-                How can AI Workspace assist you today?
+              <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
+                How can AI Hub help you today?
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-md mx-auto">
-                Ask questions, attach images or PDFs, analyze code, and stream responses across OpenRouter, NVIDIA NIM, and Gemini.
+                Ask anything, analyze documents, generate images &amp; videos, write code, or research topics with instant multi-model routing.
               </p>
             </div>
 
+            {/* Quick Action Tools Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg">
+              <button
+                onClick={() => { setInput('Create a photorealistic image of '); composerRef.current?.focus(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-pink-500" />
+                <span>Create Image</span>
+              </button>
+
+              <button
+                onClick={() => { setInput('Create a 60-second video of '); composerRef.current?.focus(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                <span>Create Video</span>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <Paperclip className="w-3.5 h-3.5 text-blue-500" />
+                <span>Analyze File</span>
+              </button>
+
+              <button
+                onClick={() => { setInput('Write a clean TypeScript solution for '); composerRef.current?.focus(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <FileCode className="w-3.5 h-3.5 text-cyan-500" />
+                <span>Write Code</span>
+              </button>
+
+              <button
+                onClick={() => { setIsWebSearchEnabled(true); setInput('Research key insights and recent developments regarding '); composerRef.current?.focus(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Research</span>
+              </button>
+
+              <button
+                onClick={() => { setInput('Create a comprehensive structured report on '); composerRef.current?.focus(); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-medium text-neutral-800 dark:text-neutral-200 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/80"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-500" />
+                <span>Create Document</span>
+              </button>
+            </div>
+
             {/* Prompt Starter Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left pt-2">
               {starterPrompts.map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => sendMessage(item.prompt)}
-                  className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/40 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition-all text-left shadow-2xs group cursor-pointer"
+                  className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/40 hover:bg-neutral-100 dark:hover:bg-neutral-800/80 transition-all text-left shadow-2xs group cursor-pointer"
                 >
                   <div className="font-semibold text-xs text-neutral-900 dark:text-white flex items-center justify-between">
                     <span>{item.title}</span>
                     <ArrowRight className="w-3 h-3 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
                   </div>
-                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2 leading-relaxed">
                     {item.prompt}
                   </div>
                 </button>
@@ -753,15 +851,99 @@ export const ChatView: React.FC = () => {
           )}
 
           {/* Input Box */}
-          <div className="relative flex items-end gap-2 bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl p-1.5 sm:p-2 focus-within:border-blue-500 transition-colors shadow-xs">
+          <div className="relative flex items-end gap-1.5 sm:gap-2 bg-neutral-100 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-1.5 sm:p-2 focus-within:border-blue-500 transition-colors shadow-xs">
             {/* Attachment Button */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isStreaming || isUploadingAttachment}
-              className="p-2 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
               title="Attach files (Images, PDFs, Documents, Code)"
             >
               <Paperclip className="w-4 h-4" />
+            </button>
+
+            {/* Assistant Tools Picker Button & Popover */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowToolsPicker(!showToolsPicker)}
+                disabled={isStreaming}
+                className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1 text-xs font-semibold ${
+                  showToolsPicker 
+                    ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-white' 
+                    : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800'
+                }`}
+                title="Assistant Tools"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                <span className="text-[11px] font-medium hidden xs:inline sm:inline">Tools</span>
+              </button>
+
+              {/* Tools Popover Menu */}
+              {showToolsPicker && (
+                <div 
+                  onClick={() => setShowToolsPicker(false)}
+                  className="absolute bottom-12 left-0 z-50 w-60 p-2 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xl space-y-1 text-xs animate-in fade-in slide-in-from-bottom-2 duration-150"
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    AI Assistant Tools
+                  </div>
+
+                  <button
+                    onClick={() => { setInput('Create a photorealistic image of '); composerRef.current?.focus(); setShowToolsPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                  >
+                    <ImageIcon className="w-4 h-4 text-pink-500 shrink-0" />
+                    <span>AI Image Generator</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setInput('Create a 60-second video of '); composerRef.current?.focus(); setShowToolsPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-500 shrink-0" />
+                    <span>AI Video Generator</span>
+                  </button>
+
+                  <button
+                    onClick={() => { fileInputRef.current?.click(); setShowToolsPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                  >
+                    <Paperclip className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span>Analyze PDF / File</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setInput('Write a clean TypeScript solution for '); composerRef.current?.focus(); setShowToolsPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                  >
+                    <FileCode className="w-4 h-4 text-cyan-500 shrink-0" />
+                    <span>Code Architecture</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setIsWebSearchEnabled(true); setShowToolsPicker(false); }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-left font-medium text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                  >
+                    <Globe className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>Live Web Search</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Web Search Toggle Button */}
+            <button
+              onClick={() => setIsWebSearchEnabled(!isWebSearchEnabled)}
+              disabled={isStreaming}
+              className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1 text-xs font-semibold ${
+                isWebSearchEnabled 
+                  ? 'bg-blue-600 text-white shadow-2xs' 
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800'
+              }`}
+              title="Toggle Live Web Search"
+            >
+              <Globe className="w-4 h-4" />
+              {isWebSearchEnabled && <span className="text-[10px] hidden sm:inline">Search ON</span>}
             </button>
 
             <textarea

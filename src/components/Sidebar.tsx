@@ -75,14 +75,14 @@ export const Sidebar: React.FC = () => {
 
       {/* Sidebar Panel */}
       <aside 
-        className={`fixed md:static inset-y-0 left-0 z-40 w-64 md:w-64 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col transition-transform duration-200 ease-in-out ${
+        className={`fixed md:static inset-y-0 left-0 z-50 w-[min(85vw,320px)] md:w-64 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 flex flex-col transition-transform duration-200 ease-in-out shadow-2xl md:shadow-none ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
         {/* Top Action: New Chat */}
         <div className="p-3 border-b border-neutral-200 dark:border-neutral-800">
           <button
-            onClick={() => createNewChat()}
+            onClick={() => { createNewChat(); setIsSidebarOpen(false); }}
             className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition-colors shadow-xs cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -90,12 +90,12 @@ export const Sidebar: React.FC = () => {
           </button>
         </div>
 
-        {/* Primary 6 Navigation Tabs */}
+        {/* Primary Navigation Tabs */}
         <div className="p-2 space-y-0.5 border-b border-neutral-200 dark:border-neutral-800">
-          {/* 1. Chat */}
+          {/* Chat */}
           <button
             onClick={() => { setActiveTab('chat'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
               activeTab === 'chat' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
@@ -110,10 +110,55 @@ export const Sidebar: React.FC = () => {
             </span>
           </button>
 
-          {/* 2. Files */}
+          {/* Assistants */}
+          <button
+            onClick={() => { setActiveTab('assistants'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              activeTab === 'assistants' 
+                ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span>Assistants</span>
+            </div>
+          </button>
+
+          {/* Prompts Library */}
+          <button
+            onClick={() => { setActiveTab('prompts'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              activeTab === 'prompts' 
+                ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Database className="w-4 h-4 text-amber-500" />
+              <span>Prompts</span>
+            </div>
+          </button>
+
+          {/* Artifacts Workspace */}
+          <button
+            onClick={() => { setActiveTab('artifacts'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              activeTab === 'artifacts' 
+                ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
+                : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Layers className="w-4 h-4 text-cyan-500" />
+              <span>Artifacts</span>
+            </div>
+          </button>
+
+          {/* Files */}
           <button
             onClick={() => { setActiveTab('files'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
               activeTab === 'files' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
@@ -128,28 +173,25 @@ export const Sidebar: React.FC = () => {
             </span>
           </button>
 
-          {/* 3. AI Tools */}
+          {/* AI Tools */}
           <button
             onClick={() => { setActiveTab('tools'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
               activeTab === 'tools' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <Sparkles className="w-4 h-4 text-rose-500" />
               <span>AI Tools</span>
             </div>
-            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400">
-              New
-            </span>
           </button>
 
-          {/* 4. Projects */}
+          {/* Projects */}
           <button
             onClick={() => { setActiveTab('projects'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
               activeTab === 'projects' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
@@ -164,25 +206,25 @@ export const Sidebar: React.FC = () => {
             </span>
           </button>
 
-          {/* 5. History */}
+          {/* Models */}
           <button
-            onClick={() => { setActiveTab('history'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
-              activeTab === 'history' 
+            onClick={() => { setActiveTab('models'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+              activeTab === 'models' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <History className="w-4 h-4 text-neutral-500" />
-              <span>History</span>
+              <Star className="w-4 h-4 text-purple-500" />
+              <span>Models Hub</span>
             </div>
           </button>
 
-          {/* 6. Settings */}
+          {/* Settings */}
           <button
             onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
               activeTab === 'settings' 
                 ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-white font-semibold' 
                 : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'

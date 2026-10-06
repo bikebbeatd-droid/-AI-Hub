@@ -14,7 +14,12 @@ import {
   FileItem,
   ProjectItem,
   AppSettings,
-  EnsembleComparison
+  EnsembleComparison,
+  CustomAssistant,
+  MemoryItem,
+  PromptTemplate,
+  ArtifactItem,
+  SearchCitation
 } from '../types/index.ts';
 import * as api from '../services/api.ts';
 
@@ -42,15 +47,22 @@ interface HubContextType {
   currentMode: ModelMode;
   setMode: (mode: ModelMode) => void;
   selectedModelId: string | null;
+  selectedModelIds: string[]; // Simultaneous multi-model selection
+  toggleSelectedModelId: (modelId: string) => void;
+  clearSelectedModelIds: () => void;
   selectedModel: ModelInfo | null;
   selectModel: (modelId: string | null, mode?: ModelMode) => void;
   testingModel: ModelInfo | null;
   setTestingModel: (model: ModelInfo | null) => void;
 
+  // Web Search
+  isWebSearchEnabled: boolean;
+  setIsWebSearchEnabled: (enabled: boolean) => void;
+
   // Multi-Model Ensemble Consensus
   isEnsembleMode: boolean;
   setIsEnsembleMode: (active: boolean) => void;
-  sendEnsembleMessage: (content: string) => Promise<void>;
+  sendEnsembleMessage: (content: string, customModelIds?: string[]) => Promise<void>;
 
   // Providers & Keys
   providerKeys: ProviderKeys;
@@ -62,10 +74,14 @@ interface HubContextType {
   conversations: Conversation[];
   activeConversationId: string;
   activeConversation: Conversation | null;
-  createNewChat: (mode?: ModelMode, modelId?: string, projectId?: string) => void;
+  createNewChat: (mode?: ModelMode, modelId?: string, projectId?: string, assistantId?: string) => void;
   selectConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
+  togglePinConversation: (id: string) => void;
+  toggleArchiveConversation: (id: string) => void;
+  duplicateConversation: (id: string) => void;
+  shareConversation: (id: string) => string;
   clearAllConversations: () => void;
   sendMessage: (content: string, attachments?: ChatAttachment[]) => Promise<void>;
   editAndResendMessage: (messageId: string, newContent: string) => Promise<void>;
@@ -105,6 +121,28 @@ interface HubContextType {
   updateProject: (id: string, updates: Partial<ProjectItem>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
 
+  // Custom Assistants
+  assistants: CustomAssistant[];
+  createAssistant: (data: Omit<CustomAssistant, 'id' | 'createdAt'>) => CustomAssistant;
+  deleteAssistant: (id: string) => void;
+
+  // Prompt Library
+  prompts: PromptTemplate[];
+  savePrompt: (data: Omit<PromptTemplate, 'id'>) => PromptTemplate;
+  deletePrompt: (id: string) => void;
+
+  // AI Memory
+  memories: MemoryItem[];
+  addMemory: (text: string, category?: 'preference' | 'fact' | 'instruction') => void;
+  deleteMemory: (id: string) => void;
+  clearMemories: () => void;
+
+  // Artifacts / Workspace
+  artifacts: ArtifactItem[];
+  activeArtifact: ArtifactItem | null;
+  setActiveArtifact: (art: ArtifactItem | null) => void;
+  saveArtifact: (art: Omit<ArtifactItem, 'id' | 'createdAt' | 'updatedAt'>) => ArtifactItem;
+
   // AI Tools & Generation
   generateImage: (prompt: string, aspectRatio?: string, style?: string) => Promise<FileItem>;
   isGeneratingImage: boolean;
@@ -130,9 +168,14 @@ const LOCAL_STORAGE_KEYS = {
   THEME: 'ai_hub_theme',
   MODE: 'ai_hub_mode',
   MODEL_ID: 'ai_hub_selected_model_id',
+  MULTI_MODEL_IDS: 'ai_hub_selected_model_ids',
   SETTINGS: 'ai_hub_settings',
   ACTIVE_PROJECT: 'ai_hub_active_project_id',
-  ENSEMBLE_MODE: 'ai_hub_ensemble_mode'
+  ENSEMBLE_MODE: 'ai_hub_ensemble_mode',
+  ASSISTANTS: 'ai_hub_assistants',
+  PROMPTS: 'ai_hub_prompts',
+  MEMORIES: 'ai_hub_memories',
+  ARTIFACTS: 'ai_hub_artifacts'
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -198,6 +241,214 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  // Multi-Model Selection State
+  const [selectedModelIds, setSelectedModelIdsState] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.MULTI_MODEL_IDS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleSelectedModelId = (modelId: string) => {
+    setSelectedModelIdsState(prev => {
+      const next = prev.includes(modelId) ? prev.filter(id => id !== modelId) : [...prev, modelId];
+      localStorage.setItem(LOCAL_STORAGE_KEYS.MULTI_MODEL_IDS, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearSelectedModelIds = () => {
+    setSelectedModelIdsState([]);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.MULTI_MODEL_IDS);
+  };
+
+  // Web Search Toggle State
+  const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
+
+  // Custom Assistants State
+  const DEFAULT_ASSISTANTS: CustomAssistant[] = [
+    {
+      id: 'asst_code_architect',
+      name: 'Senior Architect & Code Auditor',
+      description: 'Expert TypeScript, React, and backend system architect for code reviews, refactoring, and performance.',
+      avatar: '💻',
+      systemInstruction: 'You are a principal software architect. Provide clean, production-ready TypeScript code with strict safety, security best practices, and performance optimization.',
+      category: 'Coding',
+      createdAt: Date.now() - 86400000 * 5
+    },
+    {
+      id: 'asst_deep_researcher',
+      name: 'Deep Academic Researcher',
+      description: 'Systematic literature synthesizer, factual claim verifier, and structured report writer.',
+      avatar: '🔬',
+      systemInstruction: 'You are an academic researcher. Analyze topics with logical rigor, structure findings into executive summaries, highlight uncertainties, and cite sources.',
+      category: 'Research',
+      createdAt: Date.now() - 86400000 * 4
+    },
+    {
+      id: 'asst_data_analyst',
+      name: 'Data Analyst & Grid Specialist',
+      description: 'Transforms unstructured text, log files, and raw data into Markdown tables, CSVs, and JSON objects.',
+      avatar: '📊',
+      systemInstruction: 'You are a data analyst. Convert raw input into structured, well-aligned Markdown tables, valid JSON, or cleaned CSVs with headers and metrics.',
+      category: 'Analysis',
+      createdAt: Date.now() - 86400000 * 3
+    }
+  ];
+
+  const [assistants, setAssistants] = useState<CustomAssistant[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.ASSISTANTS);
+      return saved ? JSON.parse(saved) : DEFAULT_ASSISTANTS;
+    } catch {
+      return DEFAULT_ASSISTANTS;
+    }
+  });
+
+  const createAssistant = (data: Omit<CustomAssistant, 'id' | 'createdAt'>): CustomAssistant => {
+    const newAsst: CustomAssistant = {
+      ...data,
+      id: 'asst_' + Date.now(),
+      createdAt: Date.now()
+    };
+    setAssistants(prev => [newAsst, ...prev]);
+    return newAsst;
+  };
+
+  const deleteAssistant = (id: string) => {
+    setAssistants(prev => prev.filter(a => a.id !== id));
+  };
+
+  // Prompts Library State
+  const DEFAULT_PROMPTS: PromptTemplate[] = [
+    {
+      id: 'p_1',
+      title: 'Code Refactor & Strict Types',
+      prompt: 'Refactor the following code to improve execution performance, strict TypeScript type safety, error handling, and modular architecture:\n\n[Paste Code Here]',
+      category: 'Coding',
+      tags: ['typescript', 'refactor', 'clean-code']
+    },
+    {
+      id: 'p_2',
+      title: 'Executive Summary & Action Items',
+      prompt: 'Provide a 5-bullet executive summary and an actionable list of next steps, responsibilities, and key takeaways from the following document:\n\n[Paste Document Here]',
+      category: 'Writing',
+      tags: ['summary', 'productivity', 'executive']
+    },
+    {
+      id: 'p_3',
+      title: 'Deep Research Synthesis & Proof',
+      prompt: 'Explain the core logic, mathematical proofs, key arguments, and real-world implications for:\n\n[Insert Subject Here]',
+      category: 'Research',
+      tags: ['math', 'logic', 'research']
+    },
+    {
+      id: 'p_4',
+      title: '60-Second Short Script & Storyboard',
+      prompt: 'Create a timestamped 60-second viral Short video script and visual storyboard for: "[Topic]". Include timestamped segments, voiceover lines, visual B-roll cues, and text graphics.',
+      category: 'Productivity',
+      tags: ['script', 'video', 'storyboard']
+    }
+  ];
+
+  const [prompts, setPrompts] = useState<PromptTemplate[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.PROMPTS);
+      return saved ? JSON.parse(saved) : DEFAULT_PROMPTS;
+    } catch {
+      return DEFAULT_PROMPTS;
+    }
+  });
+
+  const savePrompt = (data: Omit<PromptTemplate, 'id'>): PromptTemplate => {
+    const newP: PromptTemplate = { ...data, id: 'prompt_' + Date.now() };
+    setPrompts(prev => [newP, ...prev]);
+    return newP;
+  };
+
+  const deletePrompt = (id: string) => {
+    setPrompts(prev => prev.filter(p => p.id !== id));
+  };
+
+  // AI Memory State
+  const [memories, setMemories] = useState<MemoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.MEMORIES);
+      return saved ? JSON.parse(saved) : [
+        { id: 'mem_1', text: 'Prefers TypeScript over plain JavaScript for all code examples', createdAt: Date.now() - 86400000, category: 'preference' },
+        { id: 'mem_2', text: 'Focuses on clean UI/UX with Tailwind CSS styling', createdAt: Date.now() - 43200000, category: 'preference' }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const addMemory = (text: string, category: 'preference' | 'fact' | 'instruction' = 'preference') => {
+    if (!text.trim()) return;
+    const item: MemoryItem = { id: 'mem_' + Date.now(), text: text.trim(), createdAt: Date.now(), category };
+    setMemories(prev => [item, ...prev]);
+  };
+
+  const deleteMemory = (id: string) => {
+    setMemories(prev => prev.filter(m => m.id !== id));
+  };
+
+  const clearMemories = () => {
+    setMemories([]);
+  };
+
+  // Artifacts / Workspace State
+  const [artifacts, setArtifacts] = useState<ArtifactItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.ARTIFACTS);
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 'art_1',
+          title: 'EventBus Module Artifact',
+          type: 'code',
+          language: 'typescript',
+          content: `export class EventBus<T extends Record<string, any>> {\n  private listeners = new Map<keyof T, Set<(data: any) => void>>();\n\n  on<K extends keyof T>(event: K, fn: (data: T[K]) => void) {\n    if (!this.listeners.has(event)) this.listeners.set(event, new Set());\n    this.listeners.get(event)!.add(fn);\n  }\n}`,
+          createdAt: Date.now() - 86400000,
+          updatedAt: Date.now() - 86400000
+        }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeArtifact, setActiveArtifact] = useState<ArtifactItem | null>(null);
+
+  const saveArtifact = (data: Omit<ArtifactItem, 'id' | 'createdAt' | 'updatedAt'>): ArtifactItem => {
+    const art: ArtifactItem = {
+      ...data,
+      id: 'art_' + Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    setArtifacts(prev => [art, ...prev]);
+    setActiveArtifact(art);
+    return art;
+  };
+
+  // Save Assistants, Prompts, Memories, Artifacts Effects
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ASSISTANTS, JSON.stringify(assistants));
+  }, [assistants]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PROMPTS, JSON.stringify(prompts));
+  }, [prompts]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.MEMORIES, JSON.stringify(memories));
+  }, [memories]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ARTIFACTS, JSON.stringify(artifacts));
+  }, [artifacts]);
   // Models & Sync State
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
@@ -544,6 +795,36 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title, updatedAt: Date.now() } : c));
   };
 
+  const togglePinConversation = (id: string) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, isPinned: !c.isPinned } : c));
+  };
+
+  const toggleArchiveConversation = (id: string) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, isArchived: !c.isArchived } : c));
+  };
+
+  const duplicateConversation = (id: string) => {
+    const target = conversations.find(c => c.id === id);
+    if (!target) return;
+    const newId = 'conv_' + Date.now();
+    const dup: Conversation = {
+      ...target,
+      id: newId,
+      title: `${target.title} (Copy)`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: target.messages.map(m => ({ ...m, id: 'msg_' + Math.random().toString(36).slice(2) }))
+    };
+    setConversations(prev => [dup, ...prev]);
+    setActiveConversationId(newId);
+  };
+
+  const shareConversation = (id: string): string => {
+    const url = `${window.location.origin}/share/conv_${id.slice(-8)}`;
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, sharedUrl: url } : c));
+    return url;
+  };
+
   const clearAllConversations = () => {
     const freshId = 'conv_' + Date.now();
     const fresh: Conversation = {
@@ -854,7 +1135,8 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               mode: 'MANUAL',
               modelId: target.modelId,
               provider: target.provider,
-              keys: providerKeys
+              keys: providerKeys,
+              fallbackEnabled: true
             },
             (chunk) => {
               setConversations(prev => prev.map(conv => {
@@ -1009,7 +1291,7 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           maxTokens: settings.ai.maxOutputTokens,
           systemInstruction: effectiveSystemInstruction,
           keys: providerKeys,
-          fallbackEnabled: currentMode === 'AUTO' && settings.ai.fallbackEnabled
+          fallbackEnabled: settings.ai.fallbackEnabled !== false
         },
         (chunk) => {
           setConversations(prev => prev.map(conv => {
@@ -1184,10 +1466,15 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentMode,
         setMode,
         selectedModelId,
+        selectedModelIds,
+        toggleSelectedModelId,
+        clearSelectedModelIds,
         selectedModel,
         selectModel,
         testingModel,
         setTestingModel,
+        isWebSearchEnabled,
+        setIsWebSearchEnabled,
         isEnsembleMode,
         setIsEnsembleMode,
         sendEnsembleMessage,
@@ -1202,6 +1489,10 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectConversation,
         deleteConversation,
         renameConversation,
+        togglePinConversation,
+        toggleArchiveConversation,
+        duplicateConversation,
+        shareConversation,
         clearAllConversations,
         sendMessage,
         editAndResendMessage,
@@ -1232,6 +1523,20 @@ export const HubProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createProject,
         updateProject,
         deleteProject,
+        assistants,
+        createAssistant,
+        deleteAssistant,
+        prompts,
+        savePrompt,
+        deletePrompt,
+        memories,
+        addMemory,
+        deleteMemory,
+        clearMemories,
+        artifacts,
+        activeArtifact,
+        setActiveArtifact,
+        saveArtifact,
         generateImage,
         isGeneratingImage,
         settings,
