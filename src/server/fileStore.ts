@@ -6,6 +6,7 @@ import { FileItem } from '../types/index.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.resolve(__dirname, '../../data/uploads');
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 export class FileStore {
   private files: Map<string, FileItem> = new Map();
@@ -69,6 +70,13 @@ export class FileStore {
     isGenerated?: boolean;
     projectId?: string;
   }): FileItem {
+    if (!Number.isFinite(file.size) || file.size < 0) {
+      throw new Error('Invalid file size.');
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new Error('File exceeds the 50 MB upload limit.');
+    }
+
     const id = 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
     const extension = path.extname(file.name).toLowerCase().replace(/^\./, '');
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -80,6 +88,9 @@ export class FileStore {
     if (file.base64Data) {
       const cleanBase64 = file.base64Data.replace(/^data:[^;]+;base64,/, '');
       const buffer = Buffer.from(cleanBase64, 'base64');
+      if (buffer.length > MAX_UPLOAD_BYTES) {
+        throw new Error('File exceeds the 50 MB upload limit.');
+      }
       fs.writeFileSync(diskPath, buffer);
 
       if (file.type.startsWith('image/')) {
@@ -99,10 +110,16 @@ export class FileStore {
       fs.writeFileSync(diskPath, file.textContent, 'utf-8');
     }
 
+    const actualSize = fs.existsSync(diskPath) ? fs.statSync(diskPath).size : 0;
+    if (actualSize > MAX_UPLOAD_BYTES) {
+      if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+      throw new Error('File exceeds the 50 MB upload limit.');
+    }
+
     const item: FileItem = {
       id,
       name: file.name,
-      size: file.size || (fs.existsSync(diskPath) ? fs.statSync(diskPath).size : 0),
+      size: actualSize || file.size,
       type: file.type || 'application/octet-stream',
       extension,
       url: `/api/files/${id}/download`,

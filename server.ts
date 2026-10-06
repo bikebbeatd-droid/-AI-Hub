@@ -591,77 +591,65 @@ app.delete('/api/projects/:id', (req, res) => {
 
 app.post('/api/images/generate', async (req, res) => {
   const { prompt, aspectRatio = '1:1', style = 'photorealistic' } = req.body;
+
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
   const geminiKey = process.env.GEMINI_API_KEY || '';
   if (!geminiKey) {
-    return res.status(400).json({ error: 'Gemini API key is required for image generation.' });
+    return res.status(400).json({ error: 'Gemini API key is required for real image generation.' });
   }
+
+  // Supported Gemini image ratios for the current image-generation API.
+  const allowedRatios = new Set(['1:1', '16:9', '9:16', '4:3', '3:4', '4:5', '5:4', '2:3', '3:2', '21:9']);
+  const safeAspectRatio = allowedRatios.has(aspectRatio) ? aspectRatio : '1:1';
+  const imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
 
   try {
     const { GoogleGenAI } = await import('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: geminiKey });
+    const ai = new GoogleGenAI({ apiKey: geminiKey.trim() });
 
-    try {
-      const response = await ai.models.generateImages({
-        model: 'imagen-3.0-generate-002',
-        prompt: `${prompt}, style: ${style}`,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: aspectRatio as any,
-          outputMimeType: 'image/png'
+    const response = await ai.models.generateContent({
+      model: imageModel,
+      contents: `${prompt.trim()}\n\nStyle: ${style || 'photorealistic'}`,
+      config: {
+        responseModalities: ['IMAGE'],
+        responseFormat: {
+          image: {
+            aspectRatio: safeAspectRatio
+          }
         }
-      });
-
-      const imgBytes = response.generatedImages?.[0]?.image?.imageBytes;
-      if (imgBytes) {
-        const fileItem = fileStore.saveFile({
-          name: `ai_generated_${Date.now()}.png`,
-          size: Buffer.from(imgBytes, 'base64').length,
-          type: 'image/png',
-          base64Data: `data:image/png;base64,${imgBytes}`,
-          isGenerated: true
-        });
-        return res.json({ success: true, file: fileItem });
       }
-    } catch (imagenErr: any) {
-      console.warn('Imagen 3 API attempt result:', imagenErr?.message);
+    });
+
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find((part: any) => part.inlineData?.data);
+
+    if (!imagePart?.inlineData?.data) {
+      return res.status(502).json({
+        error: 'The configured Gemini image model returned no image data. Check GEMINI_IMAGE_MODEL and API access.'
+      });
     }
 
-    // High quality procedural SVG visual generator fallback
-    const width = aspectRatio === '16:9' ? 1280 : aspectRatio === '9:16' ? 720 : 1024;
-    const height = aspectRatio === '16:9' ? 720 : aspectRatio === '9:16' ? 1280 : 1024;
-    const safeTitle = prompt.slice(0, 45).replace(/[<>&"']/g, '');
+    const mimeType = imagePart.inlineData.mimeType || 'image/png';
+    const extension = mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png';
+    const imgBytes = imagePart.inlineData.data;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <defs>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#0f172a" />
-          <stop offset="50%" stop-color="#1e1b4b" />
-          <stop offset="100%" stop-color="#312e81" />
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#grad)" />
-      <circle cx="${width * 0.5}" cy="${height * 0.42}" r="${Math.min(width, height) * 0.28}" fill="#818cf8" opacity="0.35" filter="blur(50px)" />
-      <rect x="${width * 0.1}" y="${height * 0.72}" width="${width * 0.8}" height="2" fill="#4338ca" opacity="0.6" />
-      <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="${Math.round(width * 0.034)}px">${safeTitle}</text>
-      <text x="50%" y="54%" text-anchor="middle" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="${Math.round(width * 0.018)}px">Generated with AI Workspace • ${style}</text>
-    </svg>`;
-
-    const base64 = Buffer.from(svg).toString('base64');
     const fileItem = fileStore.saveFile({
-      name: `ai_generated_${Date.now()}.svg`,
-      size: Buffer.from(svg).length,
-      type: 'image/svg+xml',
-      base64Data: `data:image/svg+xml;base64,${base64}`,
+      name: `ai_generated_${Date.now()}.${extension}`,
+      size: Buffer.from(imgBytes, 'base64').length,
+      type: mimeType,
+      base64Data: `data:${mimeType};base64,${imgBytes}`,
       isGenerated: true
     });
 
-    return res.json({ success: true, file: fileItem });
+    return res.json({ success: true, file: fileItem, model: imageModel });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Image generation failed' });
+    console.error('Gemini image generation failed:', err);
+    return res.status(502).json({
+      error: err?.message || 'Real image generation failed. No synthetic/fake fallback is used.'
+    });
   }
 });
 
